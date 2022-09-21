@@ -8,5 +8,5 @@ cd "$1"
 #only if copy is successful otherwise it deletes A.cpp that's normally used
 if [ $success == 0 ]
 then 
-	mv A.cpp "$2.cpp"
+	mv -i A.cpp "$2.cpp"
 fi

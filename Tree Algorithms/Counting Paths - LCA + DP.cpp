@@ -1,0 +1,140 @@
+#include "bits/stdc++.h"
+using namespace std;
+#define int long long
+
+#ifdef local
+#include "../debugger.h"
+#else
+#define debug(...) 42;
+#endif
+
+const int MOD = 1e9 + 7;
+const int K = 25;
+
+struct LCA {
+    vector<vector<int>> p;
+    vector<int> d;
+
+    LCA(vector<int> parents, vector<int> depth) : d(depth) {
+        int n = parents.size() - 1;
+        p.assign(K, vector<int>(n + 1, -1));
+        for (int i = 1; i <= n; i++)
+            p[0][i] = parents[i];
+
+        init();
+    }
+
+    void init() {
+        int n = p[0].size() - 1;
+        for (int i = 1; i < K; i++) {
+            for (int j = 1; j <= n; j++) {
+                if (p[i - 1][j] != -1) {
+                    p[i][j] = p[i - 1][p[i - 1][j]];
+                }
+            }
+        }
+    }
+
+    void walk(int& a, int& b) {
+        if (d[a] > d[b])
+            swap(a, b);
+        int diff = d[b] - d[a];
+        int c = 0;
+        while (diff) {
+            if (diff & 1) {
+                b = p[c][b];
+            }
+            diff /= 2;
+            c++;
+        }
+    }
+
+    int find_LCA(int a, int b) {
+        walk(a, b);
+
+        if (a == b) return a;
+
+        for (int k = K - 1; k >= 0; k--) {
+            if (p[k][a] != p[k][b]) {
+                a = p[k][a];
+                b = p[k][b];
+            }
+        }
+
+        return p[0][a];
+    }
+
+    int query(int a, int b) {
+        return find_LCA(a, b);
+    }
+};
+
+vector<int> bfs(vector<vector<int>>& graph, vector<int>& par) {
+    queue<pair<int, int>> q;
+    vector<int> depth(graph.size(), 0);
+    q.push({1, -1});
+    while (!q.empty()) {
+        auto node = q.front().first, p = q.front().second;
+        q.pop();
+
+        for (auto u : graph[node]) {
+            if (u != p) {
+                depth[u] = depth[node] + 1;
+                q.push({u, node});
+                par[u] = node;
+            }
+        }
+    }
+
+    return depth;
+}
+
+void dfs(int curr, int p, vector<vector<int>>& graph, vector<int>& pref_sum) {
+    for (auto v : graph[curr]) {
+        if (v != p) {
+            dfs(v, curr, graph, pref_sum);
+            pref_sum[curr] += pref_sum[v];
+        }
+    }
+}
+
+int32_t main() {
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+
+    int n, m;
+    cin >> n >> m;
+
+    vector<int> par(n + 1, -1);
+    vector<vector<int>> graph(n + 1);
+    int x, y;
+    for (int i = 2; i <= n; i++) {
+        cin >> x >> y;
+        graph[x].push_back(y);
+        graph[y].push_back(x);
+    }
+    vector<int> pref_sum(n + 1);
+    vector<int> depth = bfs(graph, par);
+    LCA lca(par, depth);
+    int a, b;
+    while (m--) {
+        cin >> a >> b;
+        // parents with a as child have path increased by 1
+        pref_sum[a]++;
+        // parents with b as child have path increased by 1
+        pref_sum[b]++;
+        int anc = lca.query(a, b);
+        // when you get to lca, path increase (a->b) is reduced to 1
+        pref_sum[anc]--;
+        // anything above lca would have no increase
+        if (par[anc] != -1)
+            pref_sum[par[anc]]--;
+    }
+
+    // do a subtree sum in order to incorporate changes
+    dfs(1, 0, graph, pref_sum);
+
+    for (int i = 1; i <= n; i++)
+        cout << pref_sum[i] << " ";
+    cout << "\n";
+}
